@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線形代数2 - ランダムCBT試験</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f2f2f2; margin: 0; padding: 0; color: #333; height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;}
+        
+        /* --- 共通スタイル --- */
+        .screen { display: none; width: 100%; height: 100%; box-sizing: border-box; }
+        .active-screen { display: flex; flex-direction: column; }
+
+        /* 開始画面 */
+        #start-screen {
+            justify-content: center; align-items: center; text-align: center;
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+        }
+        .start-card {
+            background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 600px; width: 90%;
+        }
+        h1 { margin-bottom: 20px; color: #2c3e50; }
+        .exam-info { text-align: left; margin-bottom: 30px; background: #f8f9fa; padding: 20px; border-radius: 5px; }
+        .big-btn {
+            padding: 15px 50px; font-size: 1.2em; background-color: #007bff; color: white;
+            border: none; border-radius: 30px; cursor: pointer; transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,123,255,0.3);
+            margin: 10px;
+        }
+        .big-btn:hover { background-color: #0056b3; transform: translateY(-2px); }
+        
+        /* デバッグボタン用のスタイル */
+        .debug-btn {
+            background-color: #6c757d; font-size: 1em; padding: 10px 30px;
+        }
+        .debug-btn:hover { background-color: #5a6268; }
+
+        /* ヘッダー */
+        #exam-header {
+            background-color: #343a40; color: #fff; padding: 0 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            height: 60px; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100;
+        }
+        #question-nav-bar {
+            display: flex; gap: 8px; overflow-x: auto; 
+            max-width: 70%; padding: 5px 0;
+            -ms-overflow-style: none; scrollbar-width: none;
+        }
+        #question-nav-bar::-webkit-scrollbar { display: none; }
+        .q-nav-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: 2px solid #6c757d;
+            background-color: transparent; color: #adb5bd; font-weight: bold; font-size: 0.9em;
+            cursor: pointer; flex-shrink: 0; transition: all 0.2s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .q-nav-btn:hover { border-color: #fff; color: #fff; }
+        .q-nav-btn.active { background-color: #007bff; border-color: #007bff; color: white; transform: scale(1.1); }
+
+        #timer-label { font-size: 0.8em; color: #adb5bd; text-align: right;}
+        #timer-display { font-size: 1.2em; font-family: 'Courier New', monospace; font-weight: bold; color: #fff; display: block;}
+        .timer-warning { color: #ff6b6b !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* 問題エリア */
+        #exam-body {
+            flex-grow: 1; overflow-y: auto; padding: 20px; max-width: 900px; margin: 0 auto; width: 100%;
+        }
+        .question-slide { display: none; animation: fadeIn 0.3s; }
+        .question-slide.active-slide { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* デバッグモード用スタイル（全表示） */
+        .debug-list-view .question-slide {
+            display: block !important;
+            border-bottom: 3px dashed #ccc;
+            padding-bottom: 40px;
+            margin-bottom: 40px;
+        }
+        .debug-label {
+            background: #ffc107; color: #333; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8em; margin-bottom: 5px; display: inline-block;
+        }
+        .debug-footer {
+            text-align: center; padding: 40px; border-top: 2px solid #333;
+        }
+
+        .question-block { display: flex; margin-bottom: 20px; align-items: flex-start; }
+        .info-panel { width: 120px; background-color: #fff; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; font-size: 0.85em; margin-right: 15px; flex-shrink: 0; }
+        .q-number { font-weight: bold; font-size: 1.2em; color: #d9534f; margin-bottom: 5px; display: block;}
+        .status { display: block; margin-bottom: 5px; }
+        .grade-result { font-weight: bold; color: #007bff; display: none; margin-top: 5px;}
+        .content-panel { flex-grow: 1; background-color: #e7f3f5; border: 1px solid #b8d0d5; padding: 20px; border-radius: 4px; min-height: 300px;}
+        .question-text { margin-bottom: 20px; line-height: 1.8; font-size: 1.05em; }
+        
+        input[type="text"] { border: 1px solid #888; padding: 5px; margin: 0 4px; text-align: center; border-radius: 3px; font-size: 1em; }
+        .input-mini { width: 30px; } .input-small { width: 50px; } .input-med { width: 80px; }
+        .correct-bg { background-color: #d4edda !important; border-color: #28a745 !important; }
+        .incorrect-bg { background-color: #f8d7da !important; border-color: #dc3545 !important; }
+        .matrix-table { display: inline-table; vertical-align: middle; margin: 5px; }
+        .matrix-table td { padding: 4px; }
+        .answer-section { background-color: #fff; padding: 20px; border: 1px solid #ccc; margin-top: 15px; border-radius: 4px;}
+        .long-text { width: 80%; text-align: left !important; }
+
+        /* CSSによるベクトル表示修正 */
+        .vector-row { display: flex; align-items: center; margin-bottom: 20px; font-size: 1.1em; }
+        .vector-bracket-container { display: inline-flex; align-items: stretch; margin: 0 10px; }
+        .bracket-left { width: 10px; border: 2px solid #333; border-right: none; margin-right: 2px; }
+        .bracket-right { width: 10px; border: 2px solid #333; border-left: none; margin-left: 2px; }
+        .vector-inputs { display: flex; flex-direction: column; gap: 4px; padding: 2px 0; }
+        .vector-inputs input { margin: 0; width: 40px; }
+
+        /* フッター */
+        #exam-footer {
+            background-color: #fff; border-top: 1px solid #ddd; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            height: 70px; flex-shrink: 0;
+        }
+        .nav-btn { padding: 10px 30px; font-size: 1em; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .nav-btn:hover { background-color: #5a6268; }
+        .nav-btn:disabled { background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; }
+        .submit-btn { background-color: #28a745; display: none; }
+        .submit-btn:hover { background-color: #218838; }
+
+        /* 結果画面 */
+        #result-screen { justify-content: center; align-items: center; text-align: center; background-color: #f8f9fa; }
+        .result-card { background: white; padding: 50px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 80%; max-width: 600px; }
+        .score-display { font-size: 3em; font-weight: bold; color: #2c3e50; margin: 20px 0; }
+        .review-btn { background-color: #17a2b8; padding: 12px 30px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em;}
+    </style>
+</head>
+<body>
+    <script>
+        (function(){
+            // ★設定：ここに好きなパスワードを入れてください
+            const PASSWORD = "a!sDbmti$69vjw&okr$$&m"; 
+            
+            // 認証状態を保存するキー（一度入力したら次回からスキップする機能用）
+            const SESSION_KEY = "linear_algebra_exam_auth";
+
+            // 保存されたパスワードと一致しない場合のみ入力を求める
+            if (localStorage.getItem(SESSION_KEY) !== PASSWORD) {
+                let input = prompt("【線形代数2】パスワードを入力してください:");
+                
+                if (input === PASSWORD) {
+                    // 正解なら保存して進む
+                    localStorage.setItem(SESSION_KEY, PASSWORD);
+                } else {
+                    // 不正解、またはキャンセルの場合
+                    alert("パスワードが違います。");
+                    
+                    // 画面を強制的に書き換えて試験画面を見せないようにする
+                    document.body.innerHTML = `
+                        <div style='display:flex; justify-content:center; align-items:center; height:100vh; flex-direction:column; font-family:sans-serif; background:#f8d7da; color:#721c24;'>
+                            <h1>アクセス権限がありません</h1>
+                            <p>正しいパスワードが必要です。</p>
+                            <button onclick='location.reload()' style='padding:10px 20px; cursor:pointer;'>再入力する</button>
+                        </div>
+                    `;
+                    // 以降のJavaScriptの実行を強制停止
+                    throw new Error("Authentication Failed"); 
+                }
+            }
+        })();
+    </script>
+    <div id="start-screen" class="screen active-screen">
+        ```
+    <div id="start-screen" class="screen active-screen">
+        <div class="start-card">
+            <h1>線形代数2 ランダム期末試験</h1>
+            <div class="exam-info">
+                <p><strong>試験時間：</strong> 75分</p>
+                <p><strong>問題数：</strong> 8問</p>
+                <p><strong>注意事項：</strong></p>
+                <ul>
+                    <li>開始ボタンを押すと、各テーマごとにランダムに問題が選出されます。</li>
+                    <li>問1はランクの数値入力と、基底の選択問題です。</li>
+                </ul>
+            </div>
+            <button class="big-btn" onclick="startExam()">試験を開始する</button>
+            <br>
+            <button class="big-btn debug-btn" onclick="startDebugMode()">デバッグモード (全ストック表示)</button>
+        </div>
+    </div>
+
+    <div id="exam-screen" class="screen">
+        <div id="exam-header">
+            <div id="question-nav-bar"></div>
+            <div id="timer-label">
+                残り時間<br>
+                <span id="timer-display">75:00</span>
+            </div>
+        </div>
+
+        <div id="exam-body"></div>
+
+        <div id="exam-footer">
+            <button class="nav-btn" id="prev-btn" onclick="moveSlide(-1)">← 前へ</button>
+            <div style="flex-grow:1"></div>
+            <button class="nav-btn" id="next-btn" onclick="moveSlide(1)">次へ →</button>
+            <button class="nav-btn submit-btn" id="submit-btn" onclick="finishExam()">採点して終了</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <div class="result-card">
+            <h1>採点結果</h1>
+            <div class="score-display" id="total-score-display">-- / --</div>
+            <p>お疲れ様でした。</p>
+            <button class="review-btn" onclick="reviewAnswers()">回答を見直す</button>
+        </div>
+    </div>
+
+<script>
+    /* * =================================================================
+     * 【問題ストック置き場】
+     * =================================================================
+     */
+    const questionStock = {
+        // --- 問1: ランクと基底のハイブリッド問題 ---
+        q1: [
+            {
+                html: `
+                    次のベクトル \\(\\boldsymbol{a}_1\\), \\(\\boldsymbol{a}_2\\), \\(\\boldsymbol{a}_3\\), \\(\\boldsymbol{a}_4\\) について、以下の問いに答えなさい。
+                    $$
+                    \\boldsymbol{a}_1 = \\begin{pmatrix} 1 \\\\ 2 \\\\ 1 \\\\ 3 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_2 = \\begin{pmatrix} 2 \\\\ 4 \\\\ 3 \\\\ 1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_3 = \\begin{pmatrix} 1 \\\\ 2 \\\\ 2 \\\\ -2 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_4 = \\begin{pmatrix} 3 \\\\ 6 \\\\ 4 \\\\ 4 \\end{pmatrix}
+                    $$
+                    
+                    について、これらのベクトルの組における1次独立な最大個数を\\(r\\)とすると\\(r = \\) <input type="text" class="input-small" id="q1_rank">であり、
+                    \\(r\\)個の1次独立なベクトルの組を前の方から選ぶと<br>
+                    
+                    <div class="answer-section">
+                        <label><input type="checkbox" name="q1_basis" value="a1"> \\(\\boldsymbol{a}_1\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a2"> \\(\\boldsymbol{a}_2\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a3"> \\(\\boldsymbol{a}_3\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a4"> \\(\\boldsymbol{a}_4\\)</label>
+                    </div>
+                    となる。
+                `,
+                // ハイブリッド用の正解データ定義
+                correct: {
+                    type: "hybrid",
+                    // 数値入力の正解 (ランク2)
+                    text: { id: "q1_rank", val: "2" }, 
+                    // チェックボックスの正解 (a1, a2) ※a3=a2-a1 なのでa1,a2は独立
+                    checkbox: { name: "q1_basis", vals: ["a1", "a2"] } 
+                },
+                gradingType: "hybrid"
+            },
+            {
+                html: `
+                    次のベクトル \\(\\boldsymbol{a}_1\\), \\(\\boldsymbol{a}_2\\), \\(\\boldsymbol{a}_3\\), \\(\\boldsymbol{a}_4\\), \\(\\boldsymbol{a}_5\\) について、以下の問いに答えなさい。
+                    $$
+                    \\boldsymbol{a}_1 = \\begin{pmatrix} 2 \\\\ 1 \\\\ 4 \\\\ 3 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_2 = \\begin{pmatrix} 1 \\\\ 0 \\\\ 2 \\\\ 1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_3 = \\begin{pmatrix} 5 \\\\ 3 \\\\ 10 \\\\ 8 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_4 = \\begin{pmatrix} 1 \\\\ 1 \\\\ 1 \\\\ 2 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_5 = \\begin{pmatrix} 1 \\\\ 0 \\\\ 1 \\\\ 1 \\end{pmatrix}
+                    $$
+                    
+                    について、これらのベクトルの組における1次独立な最大個数を\\(r\\)とすると\\(r = \\) <input type="text" class="input-small" id="q1_rank">であり、
+                    \\(r\\)個の1次独立なベクトルの組を前の方から選ぶと<br>
+                    
+                    <div class="answer-section">
+                        <label><input type="checkbox" name="q1_basis" value="a1"> \\(\\boldsymbol{a}_1\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a2"> \\(\\boldsymbol{a}_2\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a3"> \\(\\boldsymbol{a}_3\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a4"> \\(\\boldsymbol{a}_4\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a5"> \\(\\boldsymbol{a}_5\\)</label>
+                    </div>
+                    となる。
+                `,
+                correct: {
+                    type: "hybrid",
+                    text: { id: "q1_rank", val: "3" }, 
+                    checkbox: { name: "q1_basis", vals: ["a1", "a2", "a4"] } 
+                },
+                gradingType: "hybrid"
+            },
+            {
+                html: `
+                    次のベクトル \\(\\boldsymbol{a}_1\\), \\(\\boldsymbol{a}_2\\), \\(\\boldsymbol{a}_3\\), \\(\\boldsymbol{a}_4\\), \\(\\boldsymbol{a}_5\\) について、以下の問いに答えなさい。
+                    $$
+                    \\boldsymbol{a}_1 = \\begin{pmatrix} 1 \\\\ 0 \\\\ 1 \\\\ 1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_2 = \\begin{pmatrix} 2 \\\\ 1 \\\\ 0 \\\\ 1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_3 = \\begin{pmatrix} 1 \\\\ 0 \\\\ -1 \\\\ 2 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_4 = \\begin{pmatrix} 2 \\\\ -1 \\\\ 2 \\\\ 4 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_5 = \\begin{pmatrix} 3 \\\\ 2 \\\\ 3 \\\\ -1 \\end{pmatrix}
+                    $$
+                    
+                    について、これらのベクトルの組における1次独立な最大個数を\\(r\\)とすると\\(r = \\) <input type="text" class="input-small" id="q1_rank">であり、
+                    \\(r\\)個の1次独立なベクトルの組を前の方から選ぶと<br>
+                    
+                    <div class="answer-section">
+                        <label><input type="checkbox" name="q1_basis" value="a1"> \\(\\boldsymbol{a}_1\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a2"> \\(\\boldsymbol{a}_2\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a3"> \\(\\boldsymbol{a}_3\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a4"> \\(\\boldsymbol{a}_4\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a5"> \\(\\boldsymbol{a}_5\\)</label>
+                    </div>
+                    となる。
+                `,
+                correct: {
+                    type: "hybrid",
+                    text: { id: "q1_rank", val: "3" }, 
+                    checkbox: { name: "q1_basis", vals: ["a1", "a2", "a3"] } 
+                },
+                gradingType: "hybrid"
+            },
+            {
+                html: `
+                    次のベクトル \\(\\boldsymbol{a}_1\\), \\(\\boldsymbol{a}_2\\), \\(\\boldsymbol{a}_3\\), \\(\\boldsymbol{a}_4\\), \\(\\boldsymbol{a}_5\\) について、以下の問いに答えなさい。
+                    $$
+                    \\boldsymbol{a}_1 = \\begin{pmatrix} 1 \\\\ 2 \\\\ 0 \\\\ 0 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_2 = \\begin{pmatrix} 2 \\\\ 3 \\\\ 0 \\\\ -1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_3 = \\begin{pmatrix} 1 \\\\ -1 \\\\ 2 \\\\ 0 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_4 = \\begin{pmatrix} 1 \\\\ 1 \\\\ 0 \\\\ -1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_5 = \\begin{pmatrix} 0 \\\\ 3 \\\\ -2 \\\\ 0 \\end{pmatrix}
+                    $$
+                    
+                    について、これらのベクトルの組における1次独立な最大個数を\\(r\\)とすると\\(r = \\) <input type="text" class="input-small" id="q1_rank">であり、
+                    \\(r\\)個の1次独立なベクトルの組を前の方から選ぶと<br>
+                    
+                    <div class="answer-section">
+                        <label><input type="checkbox" name="q1_basis" value="a1"> \\(\\boldsymbol{a}_1\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a2"> \\(\\boldsymbol{a}_2\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a3"> \\(\\boldsymbol{a}_3\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a4"> \\(\\boldsymbol{a}_4\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a5"> \\(\\boldsymbol{a}_5\\)</label>
+                    </div>
+                    となる。
+                `,
+                correct: {
+                    type: "hybrid",
+                    text: { id: "q1_rank", val: "3" }, 
+                    checkbox: { name: "q1_basis", vals: ["a1", "a2", "a3"] } 
+                },
+                gradingType: "hybrid"
+            },
+            {
+                html: `
+                    次のベクトル \\(\\boldsymbol{a}_1\\), \\(\\boldsymbol{a}_2\\), \\(\\boldsymbol{a}_3\\), \\(\\boldsymbol{a}_4\\), \\(\\boldsymbol{a}_5\\) について、以下の問いに答えなさい。
+                    $$
+                    \\boldsymbol{a}_1 = \\begin{pmatrix} 1 \\\\ 1 \\\\ -1 \\\\ 2 \\\\ 1 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_2 = \\begin{pmatrix} 1 \\\\ 0 \\\\ 1 \\\\ 1 \\\\ 0 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_3 = \\begin{pmatrix} 3 \\\\ 5 \\\\ -7 \\\\ 8 \\\\ 5 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_4 = \\begin{pmatrix} 1 \\\\ -2 \\\\ 5 \\\\ -1 \\\\ -2 \\end{pmatrix}, \\quad
+                    \\boldsymbol{a}_5 = \\begin{pmatrix} 0 \\\\ 1 \\\\ 2 \\\\ 1 \\\\ 1 \\end{pmatrix}
+                    $$
+                    
+                    について、これらのベクトルの組における1次独立な最大個数を\\(r\\)とすると\\(r = \\) <input type="text" class="input-small" id="q1_rank">であり、
+                    \\(r\\)個の1次独立なベクトルの組を前の方から選ぶと<br>
+                    
+                    <div class="answer-section">
+                        <label><input type="checkbox" name="q1_basis" value="a1"> \\(\\boldsymbol{a}_1\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a2"> \\(\\boldsymbol{a}_2\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a3"> \\(\\boldsymbol{a}_3\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a4"> \\(\\boldsymbol{a}_4\\)</label>
+                        <label><input type="checkbox" name="q1_basis" value="a5"> \\(\\boldsymbol{a}_5\\)</label>
+                    </div>
+                    となる。
+                `,
+                correct: {
+                    type: "hybrid",
+                    text: { id: "q1_rank", val: "3" }, 
+                    checkbox: { name: "q1_basis", vals: ["a1", "a2", "a5"] } 
+                },
+                gradingType: "hybrid"
+            }
+        ],
+
+        // --- 問2: 部分空間の次元 ---
+        q2: [
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) の部分空間
+                    $$ M=\\langle\\{1-x+2x^{2},-2x+x^{2},-1+4x-3x^{2},5x-2x^{2}\\}\\rangle $$
+                    について、
+                    \\( \\dim(M) = \\) <input type="text" class="input-small" id="q2_dim">
+                    である。`,
+                correct: { q2_dim: "3" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) の部分空間
+                    $$ M=\\langle\\{1+2x+x^{2}, 2+x-x^{2}, 4+5x+x^{2}\\}\\rangle $$
+                    について、
+                    \\( \\dim(M) = \\) <input type="text" class="input-small" id="q_ex2_dim">
+                    である。`,
+                correct: { q_ex2_dim: "2" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) の部分空間
+                    $$ M=\\langle\\{1+2x+x^{2}, 2+x-x^{2}, 4+5x+x^{2}\\}\\rangle $$
+                    について、
+                    \\( \\dim(M) = \\) <input type="text" class="input-small" id="q_ex2_dim">
+                    である。`,
+                correct: { q_ex2_dim: "2" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) の部分空間
+                    $$ M=\\langle\\{1+x, x+x^{2}, 1+x+x^{2}\\}\\rangle $$
+                    について、
+                    \\( \\dim(M) = \\) <input type="text" class="input-small" id="q_ex3_dim">
+                    である。`,
+                correct: { q_ex3_dim: "3" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) の部分空間
+                    $$ M=\\langle\\{1-x+2x^{2}, -2+2x-4x^{2}, 3-3x+6x^{2}\\}\\rangle $$
+                    について、
+                    \\( \\dim(M) = \\) <input type="text" class="input-small" id="q_ex4_dim">
+                    である。`,
+                correct: { q_ex4_dim: "1" },
+                gradingType: "text_match"
+            }
+        ],
+
+        // --- 問3: ランクと核 ---
+        q3: [
+            {
+                html: `
+                    $$ T:\\mathbb{R}^{4}\\rightarrow\\mathbb{R}^{3}:T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\\\ x_{4}\\end{bmatrix}\\right)=\\begin{bmatrix}x_{1}-3x_{2}-4x_{3}-3x_{4}\\\\ -2x_{1}+7x_{2}+9x_{3}+6x_{4}\\\\ x_{2}+x_{3}+x_{4}\\end{bmatrix} $$
+                    のとき、<br>
+                    \\( \\text{rank}(T) = \\) <input type="text" class="input-small" id="q3_rank">, 
+                    \\( \\text{null}(T) = \\) <input type="text" class="input-small" id="q3_null">
+                    である。`,
+                correct: { q3_rank: "3", q3_null: "1" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    $$ T:\\mathbb{R}^{5}\\rightarrow\\mathbb{R}^{3}:T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\\\ x_{4}\\\\ x_{5}\\end{bmatrix}\\right)=\\begin{bmatrix}2x_{1}-x_{2}+x_{3}+5x_{4}\\\\ x_{1}+3x_{2}+4x_{3}-x_{4}+7x_{5}\\\\ x_{1}+x_{3}+2x_{4}+x_{5}\\end{bmatrix} $$
+                    のとき、<br>
+                    \\( \\text{rank}(T) = \\) <input type="text" class="input-small" id="q3_rank">, 
+                    \\( \\text{null}(T) = \\) <input type="text" class="input-small" id="q3_null">
+                    である。`,
+                correct: { q3_rank: "2", q3_null: "3" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    $$ T:\\mathbb{R}^{4}\\rightarrow\\mathbb{R}^{3}:T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\\\ x_{4}\\end{bmatrix}\\right)=\\begin{bmatrix}2x_{1}+4x_{2}+3x_{3}+x_{4}\\\\ x_{3}+x_{4}\\\\ x_{1}+2x_{2}+x_{3}\\end{bmatrix} $$
+                    のとき、<br>
+                    \\( \\text{rank}(T) = \\) <input type="text" class="input-small" id="q3_rank">, 
+                    \\( \\text{null}(T) = \\) <input type="text" class="input-small" id="q3_null">
+                    である。`,
+                correct: { q3_rank: "2", q3_null: "2" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    $$ T:\\mathbb{R}^{5}\\rightarrow\\mathbb{R}^{4}:T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\\\ x_{4}\\\\ x_{5}\\end{bmatrix}\\right)=\\begin{bmatrix}x_{1}-2x_{2}+x_{3}\\\\ x_{1}-2x_{2}+x_{3}+x_{5}\\\\ -2x_{1}+4x_{2}-2x_{3}+2x_{5}\\\\ x_{1}-x_{2}+2x_{3}+x_{4}+x_{5}\\end{bmatrix} $$
+                    のとき、<br>
+                    \\( \\text{rank}(T) = \\) <input type="text" class="input-small" id="q3_rank">, 
+                    \\( \\text{null}(T) = \\) <input type="text" class="input-small" id="q3_null">
+                    である。`,
+                correct: { q3_rank: "3", q3_null: "2" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    $$ T:\\mathbb{R}^{5}\\rightarrow\\mathbb{R}^{4}:T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\\\ x_{4}\\\\ x_{5}\\end{bmatrix}\\right)=\\begin{bmatrix}x_{2}+x_{3}+x_{4}+3x_{5}\\\\ -x_{1}-2x_{2}-5x_{3}-x_{4}-4x_{5}\\\\ x_{1}+x_{2}+4x_{3}+x_{5}\\\\ x_{1}-x_{2}+2x_{3}-2x_{4}-5x_{5}\\end{bmatrix} $$
+                    のとき、<br>
+                    \\( \\text{rank}(T) = \\) <input type="text" class="input-small" id="q3_rank">, 
+                    \\( \\text{null}(T) = \\) <input type="text" class="input-small" id="q3_null">
+                    である。`,
+                correct: { q3_rank: "2", q3_null: "3" },
+                gradingType: "text_match"
+            }
+        ],
+
+        // --- 問4: 表現行列 ---
+        q4: [
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) 上の線形変換
+                    $$ T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix}\\right) = \\begin{bmatrix}1&1&0\\\\ 0&1&1\\\\ 1&0&1\\end{bmatrix} \\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix} $$
+                    について、\\(\\mathbb{R}^{3}\\) の基底
+                    $$ \\left\\{ \\begin{bmatrix}2\\\\ 1\\\\ -1\\end{bmatrix}, \\begin{bmatrix}1\\\\ -1\\\\ -1\\end{bmatrix}, \\begin{bmatrix}2\\\\ 2\\\\ -1\\end{bmatrix} \\right\\} $$
+                    に関する \\(T\\) の表現行列を \\(A = [a_{ij}]\\) とするとき、各成分を求めよ。
+                    <div class="answer-section">
+                        \\(A = \\)
+                        <table class="matrix-table">
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_0_0"></td>
+                                <td><input type="text" class="input-small" id="q4_0_1"></td>
+                                <td><input type="text" class="input-small" id="q4_0_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_1_0"></td>
+                                <td><input type="text" class="input-small" id="q4_1_1"></td>
+                                <td><input type="text" class="input-small" id="q4_1_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_2_0"></td>
+                                <td><input type="text" class="input-small" id="q4_2_1"></td>
+                                <td><input type="text" class="input-small" id="q4_2_2"></td>
+                            </tr>
+                        </table>
+                    </div>`,
+                correct: {
+                    q4_0_0: "13", q4_0_1: "2", q4_0_2: "15",
+                    q4_1_0: "-5", q4_1_1: "0", q4_1_2: "-6",
+                    q4_2_0: "-9", q4_2_1: "-2", q4_2_2: "-10"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) 上の線形変換
+                    $$ T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix}\\right) = \\begin{bmatrix}1&1&1\\\\ 0&1&0\\\\ 1&0&2\\end{bmatrix} \\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix} $$
+                    について、\\(\\mathbb{R}^{3}\\) の基底
+                    $$ \\left\\{ \\begin{bmatrix}1\\\\ 1\\\\ 0\\end{bmatrix}, \\begin{bmatrix}0\\\\ 1\\\\ 1\\end{bmatrix}, \\begin{bmatrix}0\\\\ 0\\\\ 1\\end{bmatrix} \\right\\} $$
+                    に関する \\(T\\) の表現行列を \\(A = [a_{ij}]\\) とするとき、各成分を求めよ。
+                    <div class="answer-section">
+                        \\(A = \\)
+                        <table class="matrix-table">
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_0_0"></td>
+                                <td><input type="text" class="input-small" id="q4_0_1"></td>
+                                <td><input type="text" class="input-small" id="q4_0_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_1_0"></td>
+                                <td><input type="text" class="input-small" id="q4_1_1"></td>
+                                <td><input type="text" class="input-small" id="q4_1_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_2_0"></td>
+                                <td><input type="text" class="input-small" id="q4_2_1"></td>
+                                <td><input type="text" class="input-small" id="q4_2_2"></td>
+                            </tr>
+                        </table>
+                    </div>`,
+                correct: {
+                    q4_0_0: "2", q4_0_1: "2", q4_0_2: "1",
+                    q4_1_0: "-1", q4_1_1: "-1", q4_1_2: "-1",
+                    q4_2_0: "2", q4_2_1: "3", q4_2_2: "3"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) 上の線形変換
+                    $$ T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix}\\right) = \\begin{bmatrix}1&1&0\\\\ 0&1&1\\\\ 1&0&1\\end{bmatrix} \\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix} $$
+                    について、\\(\\mathbb{R}^{3}\\) の基底
+                    $$ \\left\\{ \\begin{bmatrix}1\\\\ 0\\\\ 2\\end{bmatrix}, \\begin{bmatrix}1\\\\ -1\\\\ -1\\end{bmatrix}, \\begin{bmatrix}-1\\\\ 1\\\\ 0\\end{bmatrix} \\right\\} $$
+                    に関する \\(T\\) の表現行列を \\(A = [a_{ij}]\\) とするとき、各成分を求めよ。
+                    <div class="answer-section">
+                        \\(A = \\)
+                        <table class="matrix-table">
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_0_0"></td>
+                                <td><input type="text" class="input-small" id="q4_0_1"></td>
+                                <td><input type="text" class="input-small" id="q4_0_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_1_0"></td>
+                                <td><input type="text" class="input-small" id="q4_1_1"></td>
+                                <td><input type="text" class="input-small" id="q4_1_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_2_0"></td>
+                                <td><input type="text" class="input-small" id="q4_2_1"></td>
+                                <td><input type="text" class="input-small" id="q4_2_2"></td>
+                            </tr>
+                        </table>
+                    </div>`,
+                correct: {
+                    q4_0_0: "3", q4_0_1: "0", q4_0_2: "1",
+                    q4_1_0: "-3", q4_1_1: "2", q4_1_2: "-3",
+                    q4_2_0: "-1", q4_2_1: "2", q4_2_2: "-2"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) 上の線形変換
+                    $$ T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix}\\right) = \\begin{bmatrix}2&0&1\\\\ -1&-3&1\\\\ 2&5&2\\end{bmatrix} \\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix} $$
+                    について、\\(\\mathbb{R}^{3}\\) の基底
+                    $$ \\left\\{ \\begin{bmatrix}1\\\\ 1\\\\ 0\\end{bmatrix}, \\begin{bmatrix}2\\\\ 1\\\\ 1\\end{bmatrix}, \\begin{bmatrix}3\\\\ 1\\\\ 1\\end{bmatrix} \\right\\} $$
+                    に関する \\(T\\) の表現行列を \\(A = [a_{ij}]\\) とするとき、各成分を求めよ。
+                    <div class="answer-section">
+                        \\(A = \\)
+                        <table class="matrix-table">
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_0_0"></td>
+                                <td><input type="text" class="input-small" id="q4_0_1"></td>
+                                <td><input type="text" class="input-small" id="q4_0_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_1_0"></td>
+                                <td><input type="text" class="input-small" id="q4_1_1"></td>
+                                <td><input type="text" class="input-small" id="q4_1_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_2_0"></td>
+                                <td><input type="text" class="input-small" id="q4_2_1"></td>
+                                <td><input type="text" class="input-small" id="q4_2_2"></td>
+                            </tr>
+                        </table>
+                    </div>`,
+                correct: {
+                    q4_0_0: "-11", q4_0_1: "-15", q4_0_2: "-18",
+                    q4_1_0: "8", q4_1_1: "13", q4_1_2: "14",
+                    q4_2_0: "-1", q4_2_1: "-2", q4_2_2: "-1"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) 上の線形変換
+                    $$ T\\left(\\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix}\\right) = \\begin{bmatrix}1&-1&0\\\\ 1&-2&1\\\\ -2&4&3\\end{bmatrix} \\begin{bmatrix}x_{1}\\\\ x_{2}\\\\ x_{3}\\end{bmatrix} $$
+                    について、\\(\\mathbb{R}^{3}\\) の基底
+                    $$ \\left\\{ \\begin{bmatrix}0\\\\ 1\\\\ 0\\end{bmatrix}, \\begin{bmatrix}1\\\\ 0\\\\ 1\\end{bmatrix}, \\begin{bmatrix}2\\\\ 1\\\\ 1\\end{bmatrix} \\right\\} $$
+                    に関する \\(T\\) の表現行列を \\(A = [a_{ij}]\\) とするとき、各成分を求めよ。
+                    <div class="answer-section">
+                        \\(A = \\)
+                        <table class="matrix-table">
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_0_0"></td>
+                                <td><input type="text" class="input-small" id="q4_0_1"></td>
+                                <td><input type="text" class="input-small" id="q4_0_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_1_0"></td>
+                                <td><input type="text" class="input-small" id="q4_1_1"></td>
+                                <td><input type="text" class="input-small" id="q4_1_2"></td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" class="input-small" id="q4_2_0"></td>
+                                <td><input type="text" class="input-small" id="q4_2_1"></td>
+                                <td><input type="text" class="input-small" id="q4_2_2"></td>
+                            </tr>
+                        </table>
+                    </div>`,
+                correct: {
+                    q4_0_0: "3", q4_0_1: "2", q4_0_2: "3",
+                    q4_1_0: "9", q4_1_1: "1", q4_1_2: "5",
+                    q4_2_0: "-5", q4_2_1: "0", q4_2_2: "-2"
+                },
+                gradingType: "text_match"
+            }
+        ],
+
+        // --- 問5: 内積 ---
+        q5: [
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) において、内積 \\( \\int_{-1}^{1}f(x)g(x)dx \\) を考える。このとき、<br>
+                    \\( f(x)=1+2x \\), \\( g(x)=-1+x+ax^{2} \\)<br>
+                    が直交するように \\( a \\) を定めると、<br>
+                    \\( a = \\) <input type="text" class="input-small" id="q5_a">
+                    である。`,
+                correct: { q5_a: "1" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) において、内積 \\( \\int_{-1}^{1}f(x)g(x)dx \\) を考える。このとき、<br>
+                    \\( f(x)=1 \\), \\( g(x)=3x^{2}+a \\)<br>
+                    が直交するように \\( a \\) を定めると、<br>
+                    \\( a = \\) <input type="text" class="input-small" id="q_ex1">
+                    である。`,
+                correct: { q_ex1: "-1" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{3}\\) において、内積 \\( \\int_{-1}^{1}f(x)g(x)dx \\) を考える。このとき、<br>
+                    \\( f(x)=x \\), \\( g(x)=5x^{3}+ax \\)<br>
+                    が直交するように \\( a \\) を定めると、<br>
+                    \\( a = \\) <input type="text" class="input-small" id="q_ex2">
+                    である。`,
+                correct: { q_ex2: "-3" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{1}\\) において、内積 \\( \\int_{-1}^{1}f(x)g(x)dx \\) を考える。このとき、<br>
+                    \\( f(x)=3x+1 \\), \\( g(x)=x+a \\)<br>
+                    が直交するように \\( a \\) を定めると、<br>
+                    \\( a = \\) <input type="text" class="input-small" id="q_ex3">
+                    である。`,
+                correct: { q_ex3: "-1" },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}[x]_{2}\\) において、内積 \\( \\int_{-1}^{1}f(x)g(x)dx \\) を考える。このとき、<br>
+                    \\( f(x)=1+x \\), \\( g(x)=1-x+ax^{2} \\)<br>
+                    が直交するように \\( a \\) を定めると、<br>
+                    \\( a = \\) <input type="text" class="input-small" id="q_ex4">
+                    である。`,
+                correct: { q_ex4: "-2" },
+                gradingType: "text_match"
+            }
+        ],
+
+        // --- 問6: グラム・シュミット ---
+        q6: [
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) の基底 \\( \\left\\{ \\begin{bmatrix}1\\\\ -2\\\\ 2\\end{bmatrix}, \\begin{bmatrix}0\\\\ 1\\\\ -1\\end{bmatrix}, \\begin{bmatrix}1\\\\ 0\\\\ 1\\end{bmatrix} \\right\\} \\) をシュミットの方法で正規直交化したものを
+                    $$ \\frac{1}{\\sqrt{a}}\\begin{bmatrix}a_{1}\\\\ a_{2}\\\\ a_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{b}}\\begin{bmatrix}b_{1}\\\\ b_{2}\\\\ b_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{c}}\\begin{bmatrix}c_{1}\\\\ c_{2}\\\\ c_{3}\\end{bmatrix} $$
+                    とすると、<br><br>
+
+                    <div class="vector-row">
+                        \\( a = \\) <input type="text" class="input-small" id="q6_a"> , &nbsp;
+                        \\( \\begin{bmatrix}a_1\\\\a_2\\\\a_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_a1"><input type="text" id="q6_a2"><input type="text" id="q6_a3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( b = \\) <input type="text" class="input-small" id="q6_b"> , &nbsp;
+                        \\( \\begin{bmatrix}b_1\\\\b_2\\\\b_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_b1"><input type="text" id="q6_b2"><input type="text" id="q6_b3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( c = \\) <input type="text" class="input-small" id="q6_c"> , &nbsp;
+                        \\( \\begin{bmatrix}c_1\\\\c_2\\\\c_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_c1"><input type="text" id="q6_c2"><input type="text" id="q6_c3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>`,
+                correct: {
+                    q6_a: "9", q6_a1: "1", q6_a2: "-2", q6_a3: "2",
+                    q6_b: "18", q6_b1: "4", q6_b2: "1", q6_b3: "-1",
+                    q6_c: "2", q6_c1: "0", q6_c2: "1", q6_c3: "1"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) の基底 \\( \\left\\{ \\begin{bmatrix}1\\\\ 1\\\\ 1\\end{bmatrix}, \\begin{bmatrix}1\\\\ -1\\\\ 2\\end{bmatrix}, \\begin{bmatrix}-1\\\\ 1\\\\ 3\\end{bmatrix} \\right\\} \\) をシュミットの方法で正規直交化したものを
+                    $$ \\frac{1}{\\sqrt{a}}\\begin{bmatrix}a_{1}\\\\ a_{2}\\\\ a_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{b}}\\begin{bmatrix}b_{1}\\\\ b_{2}\\\\ b_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{c}}\\begin{bmatrix}c_{1}\\\\ c_{2}\\\\ c_{3}\\end{bmatrix} $$
+                    とすると、<br><br>
+
+                    <div class="vector-row">
+                        \\( a = \\) <input type="text" class="input-small" id="q6_a"> , &nbsp;
+                        \\( \\begin{bmatrix}a_1\\\\a_2\\\\a_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_a1"><input type="text" id="q6_a2"><input type="text" id="q6_a3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( b = \\) <input type="text" class="input-small" id="q6_b"> , &nbsp;
+                        \\( \\begin{bmatrix}b_1\\\\b_2\\\\b_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_b1"><input type="text" id="q6_b2"><input type="text" id="q6_b3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( c = \\) <input type="text" class="input-small" id="q6_c"> , &nbsp;
+                        \\( \\begin{bmatrix}c_1\\\\c_2\\\\c_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_c1"><input type="text" id="q6_c2"><input type="text" id="q6_c3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>`,
+                correct: {
+                    q6_a: "3", q6_a1: "1", q6_a2: "1", q6_a3: "1",
+                    q6_b: "42", q6_b1: "1", q6_b2: "-5", q6_b3: "4",
+                    q6_c: "14", q6_c1: "-3", q6_c2: "1", q6_c3: "2"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) の基底 \\( \\left\\{ \\begin{bmatrix}1\\\\ 1\\\\ 0\\end{bmatrix}, \\begin{bmatrix}1\\\\ 3\\\\ 1\\end{bmatrix}, \\begin{bmatrix}2\\\\ -1\\\\ 1\\end{bmatrix} \\right\\} \\) をシュミットの方法で正規直交化したものを
+                    $$ \\frac{1}{\\sqrt{a}}\\begin{bmatrix}a_{1}\\\\ a_{2}\\\\ a_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{b}}\\begin{bmatrix}b_{1}\\\\ b_{2}\\\\ b_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{c}}\\begin{bmatrix}c_{1}\\\\ c_{2}\\\\ c_{3}\\end{bmatrix} $$
+                    とすると、<br><br>
+
+                    <div class="vector-row">
+                        \\( a = \\) <input type="text" class="input-small" id="q6_a"> , &nbsp;
+                        \\( \\begin{bmatrix}a_1\\\\a_2\\\\a_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_a1"><input type="text" id="q6_a2"><input type="text" id="q6_a3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( b = \\) <input type="text" class="input-small" id="q6_b"> , &nbsp;
+                        \\( \\begin{bmatrix}b_1\\\\b_2\\\\b_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_b1"><input type="text" id="q6_b2"><input type="text" id="q6_b3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( c = \\) <input type="text" class="input-small" id="q6_c"> , &nbsp;
+                        \\( \\begin{bmatrix}c_1\\\\c_2\\\\c_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_c1"><input type="text" id="q6_c2"><input type="text" id="q6_c3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>`,
+                correct: {
+                    q6_a: "2", q6_a1: "1", q6_a2: "1", q6_a3: "0",
+                    q6_b: "3", q6_b1: "-1", q6_b2: "1", q6_b3: "1",
+                    q6_c: "6", q6_c1: "1", q6_c2: "-1", q6_c3: "2"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) の基底 \\( \\left\\{ \\begin{bmatrix}1\\\\ 1\\\\ 0\\end{bmatrix}, \\begin{bmatrix}1\\\\ 1\\\\ 1\\end{bmatrix}, \\begin{bmatrix}1\\\\ 0\\\\ 0\\end{bmatrix} \\right\\} \\) をシュミットの方法で正規直交化したものを
+                    $$ \\frac{1}{\\sqrt{a}}\\begin{bmatrix}a_{1}\\\\ a_{2}\\\\ a_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{b}}\\begin{bmatrix}b_{1}\\\\ b_{2}\\\\ b_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{c}}\\begin{bmatrix}c_{1}\\\\ c_{2}\\\\ c_{3}\\end{bmatrix} $$
+                    とすると、<br><br>
+
+                    <div class="vector-row">
+                        \\( a = \\) <input type="text" class="input-small" id="q6_a"> , &nbsp;
+                        \\( \\begin{bmatrix}a_1\\\\a_2\\\\a_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_a1"><input type="text" id="q6_a2"><input type="text" id="q6_a3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( b = \\) <input type="text" class="input-small" id="q6_b"> , &nbsp;
+                        \\( \\begin{bmatrix}b_1\\\\b_2\\\\b_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_b1"><input type="text" id="q6_b2"><input type="text" id="q6_b3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( c = \\) <input type="text" class="input-small" id="q6_c"> , &nbsp;
+                        \\( \\begin{bmatrix}c_1\\\\c_2\\\\c_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_c1"><input type="text" id="q6_c2"><input type="text" id="q6_c3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>`,
+                correct: {
+                    q6_a: "2", q6_a1: "1", q6_a2: "1", q6_a3: "0",
+                    q6_b: "1", q6_b1: "0", q6_b2: "0", q6_b3: "1",
+                    q6_c: "2", q6_c1: "1", q6_c2: "-1", q6_c3: "0"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    \\(\\mathbb{R}^{3}\\) の基底 \\( \\left\\{ \\begin{bmatrix}2\\\\ 1\\\\ 1\\end{bmatrix}, \\begin{bmatrix}1\\\\ 0\\\\ 1\\end{bmatrix}, \\begin{bmatrix}1\\\\ 2\\\\ 1\\end{bmatrix} \\right\\} \\) をシュミットの方法で正規直交化したものを
+                    $$ \\frac{1}{\\sqrt{a}}\\begin{bmatrix}a_{1}\\\\ a_{2}\\\\ a_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{b}}\\begin{bmatrix}b_{1}\\\\ b_{2}\\\\ b_{3}\\end{bmatrix}, \\frac{1}{\\sqrt{c}}\\begin{bmatrix}c_{1}\\\\ c_{2}\\\\ c_{3}\\end{bmatrix} $$
+                    とすると、<br><br>
+
+                    <div class="vector-row">
+                        \\( a = \\) <input type="text" class="input-small" id="q6_a"> , &nbsp;
+                        \\( \\begin{bmatrix}a_1\\\\a_2\\\\a_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_a1"><input type="text" id="q6_a2"><input type="text" id="q6_a3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( b = \\) <input type="text" class="input-small" id="q6_b"> , &nbsp;
+                        \\( \\begin{bmatrix}b_1\\\\b_2\\\\b_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_b1"><input type="text" id="q6_b2"><input type="text" id="q6_b3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>
+                    <div class="vector-row">
+                        \\( c = \\) <input type="text" class="input-small" id="q6_c"> , &nbsp;
+                        \\( \\begin{bmatrix}c_1\\\\c_2\\\\c_3\\end{bmatrix} = \\)
+                        <div class="vector-bracket-container"><div class="bracket-left"></div><div class="vector-inputs">
+                            <input type="text" id="q6_c1"><input type="text" id="q6_c2"><input type="text" id="q6_c3">
+                        </div><div class="bracket-right"></div></div>
+                    </div>`,
+                correct: {
+                    q6_a: "6", q6_a1: "2", q6_a2: "1", q6_a3: "1",
+                    q6_b: "2", q6_b1: "0", q6_b2: "-1", q6_b3: "1",
+                    q6_c: "3", q6_c1: "-1", q6_c2: "1", q6_c3: "1"
+                },
+                gradingType: "text_match"
+            }
+        ],
+
+        // --- 問7: 対角化 ---
+        q7: [
+            {
+                html: `
+                    実対称行列 \\( A=\\begin{bmatrix}0&0&1\\\\ 0&0&0\\\\ 1&0&0\\end{bmatrix} \\) の固有値を \\(\\lambda_1 \\le \\lambda_2 \\le \\lambda_3\\) とする。<br>
+                    \\(\\lambda_1 = \\) <input type="text" class="input-small" id="q7_lam1">, 
+                    \\(\\lambda_2 = \\) <input type="text" class="input-small" id="q7_lam2">, 
+                    \\(\\lambda_3 = \\) <input type="text" class="input-small" id="q7_lam3"> <br><br>
+                    
+                    直交行列 \\(P=[p_1 p_2 p_3]\\) によって対角化するとき、各固有ベクトルを<br>
+                    \\( p_{1}=\\frac{1}{\\sqrt{k_{1}}}\\begin{bmatrix}p_{11}\\\\ p_{21}\\\\ 1\\end{bmatrix}, p_{2}=\\frac{1}{\\sqrt{k_{2}}}\\begin{bmatrix}p_{12}\\\\ 1\\\\ p_{32}\\end{bmatrix}, p_{3}=\\frac{1}{\\sqrt{k_{3}}}\\begin{bmatrix}p_{13}\\\\ p_{23}\\\\ 1\\end{bmatrix} \\) とする。<br><br>
+                    
+                    \\(k_1=\\)<input type="text" class="input-mini" id="q7_k1">, \\(p_{11}=\\)<input type="text" class="input-mini" id="q7_p11">, \\(p_{21}=\\)<input type="text" class="input-mini" id="q7_p21"><br>
+                    \\(k_2=\\)<input type="text" class="input-mini" id="q7_k2">, \\(p_{12}=\\)<input type="text" class="input-mini" id="q7_p12">, \\(p_{32}=\\)<input type="text" class="input-mini" id="q7_p32"><br>
+                    \\(k_3=\\)<input type="text" class="input-mini" id="q7_k3">, \\(p_{13}=\\)<input type="text" class="input-mini" id="q7_p13">, \\(p_{23}=\\)<input type="text" class="input-mini" id="q7_p23">`,
+                correct: {
+                    q7_lam1: "-1", q7_lam2: "0", q7_lam3: "1",
+                    q7_k1: "2", q7_p11: "-1", q7_p21: "0",
+                    q7_k2: "1", q7_p12: "0", q7_p32: "0",
+                    q7_k3: "2", q7_p13: "1", q7_p23: "0"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    実対称行列 \\( A=\\begin{bmatrix}1&0&2\\\\ 0&2&0\\\\ 2&0&1\\end{bmatrix} \\) の固有値を \\(\\lambda_1 \\le \\lambda_2 \\le \\lambda_3\\) とする。<br>
+                    \\(\\lambda_1 = \\) <input type="text" class="input-small" id="q_ex1_lam1">, 
+                    \\(\\lambda_2 = \\) <input type="text" class="input-small" id="q_ex1_lam2">, 
+                    \\(\\lambda_3 = \\) <input type="text" class="input-small" id="q_ex1_lam3"> <br><br>
+        
+                    直交行列 \\(P=[p_1 p_2 p_3]\\) によって対角化するとき、各固有ベクトルを<br>
+                    \\( p_{1}=\\frac{1}{\\sqrt{k_{1}}}\\begin{bmatrix}p_{11}\\\\ p_{21}\\\\ 1\\end{bmatrix}, p_{2}=\\frac{1}{\\sqrt{k_{2}}}\\begin{bmatrix}p_{12}\\\\ 1\\\\ p_{32}\\end{bmatrix}, p_{3}=\\frac{1}{\\sqrt{k_{3}}}\\begin{bmatrix}p_{13}\\\\ p_{23}\\\\ 1\\end{bmatrix} \\) とする。<br><br>
+        
+                    \\(k_1=\\)<input type="text" class="input-mini" id="q_ex1_k1">, \\(p_{11}=\\)<input type="text" class="input-mini" id="q_ex1_p11">, \\(p_{21}=\\)<input type="text" class="input-mini" id="q_ex1_p21"><br>
+                    \\(k_2=\\)<input type="text" class="input-mini" id="q_ex1_k2">, \\(p_{12}=\\)<input type="text" class="input-mini" id="q_ex1_p12">, \\(p_{32}=\\)<input type="text" class="input-mini" id="q_ex1_p32"><br>
+                    \\(k_3=\\)<input type="text" class="input-mini" id="q_ex1_k3">, \\(p_{13}=\\)<input type="text" class="input-mini" id="q_ex1_p13">, \\(p_{23}=\\)<input type="text" class="input-mini" id="q_ex1_p23">`,
+                correct: {
+                    q_ex1_lam1: "-1", q_ex1_lam2: "2", q_ex1_lam3: "3",
+                    q_ex1_k1: "2", q_ex1_p11: "-1", q_ex1_p21: "0",
+                    q_ex1_k2: "1", q_ex1_p12: "0", q_ex1_p32: "0",
+                    q_ex1_k3: "2", q_ex1_p13: "1", q_ex1_p23: "0"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    実対称行列 \\( A=\\begin{bmatrix}0&0&2\\\\ 0&1&0\\\\ 2&0&0\\end{bmatrix} \\) の固有値を \\(\\lambda_1 \\le \\lambda_2 \\le \\lambda_3\\) とする。<br>
+                    \\(\\lambda_1 = \\) <input type="text" class="input-small" id="q_ex2_lam1">, 
+                    \\(\\lambda_2 = \\) <input type="text" class="input-small" id="q_ex2_lam2">, 
+                    \\(\\lambda_3 = \\) <input type="text" class="input-small" id="q_ex2_lam3"> <br><br>
+        
+                    直交行列 \\(P=[p_1 p_2 p_3]\\) によって対角化するとき、各固有ベクトルを<br>
+                    \\( p_{1}=\\frac{1}{\\sqrt{k_{1}}}\\begin{bmatrix}p_{11}\\\\ p_{21}\\\\ 1\\end{bmatrix}, p_{2}=\\frac{1}{\\sqrt{k_{2}}}\\begin{bmatrix}p_{12}\\\\ 1\\\\ p_{32}\\end{bmatrix}, p_{3}=\\frac{1}{\\sqrt{k_{3}}}\\begin{bmatrix}p_{13}\\\\ p_{23}\\\\ 1\\end{bmatrix} \\) とする。<br><br>
+        
+                    \\(k_1=\\)<input type="text" class="input-mini" id="q_ex2_k1">, \\(p_{11}=\\)<input type="text" class="input-mini" id="q_ex2_p11">, \\(p_{21}=\\)<input type="text" class="input-mini" id="q_ex2_p21"><br>
+                    \\(k_2=\\)<input type="text" class="input-mini" id="q_ex2_k2">, \\(p_{12}=\\)<input type="text" class="input-mini" id="q_ex2_p12">, \\(p_{32}=\\)<input type="text" class="input-mini" id="q_ex2_p32"><br>
+                    \\(k_3=\\)<input type="text" class="input-mini" id="q_ex2_k3">, \\(p_{13}=\\)<input type="text" class="input-mini" id="q_ex2_p13">, \\(p_{23}=\\)<input type="text" class="input-mini" id="q_ex2_p23">`,
+                correct: {
+                    q_ex2_lam1: "-2", q_ex2_lam2: "1", q_ex2_lam3: "2",
+                    q_ex2_k1: "2", q_ex2_p11: "-1", q_ex2_p21: "0",
+                    q_ex2_k2: "1", q_ex2_p12: "0", q_ex2_p32: "0",
+                    q_ex2_k3: "2", q_ex2_p13: "1", q_ex2_p23: "0"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    実対称行列 \\( A=\\begin{bmatrix}2&0&1\\\\ 0&4&0\\\\ 1&0&2\\end{bmatrix} \\) の固有値を \\(\\lambda_1 \\le \\lambda_2 \\le \\lambda_3\\) とする。<br>
+                    \\(\\lambda_1 = \\) <input type="text" class="input-small" id="q_ex3_lam1">, 
+                    \\(\\lambda_2 = \\) <input type="text" class="input-small" id="q_ex3_lam2">, 
+                    \\(\\lambda_3 = \\) <input type="text" class="input-small" id="q_ex3_lam3"> <br><br>
+        
+                    直交行列 \\(P=[p_1 p_2 p_3]\\) によって対角化するとき、各固有ベクトルを<br>
+                    \\( p_{1}=\\frac{1}{\\sqrt{k_{1}}}\\begin{bmatrix}p_{11}\\\\ p_{21}\\\\ 1\\end{bmatrix}, p_{2}=\\frac{1}{\\sqrt{k_{2}}}\\begin{bmatrix}1\\\\ p_{22}\\\\ p_{32}\\end{bmatrix}, p_{3}=\\frac{1}{\\sqrt{k_{3}}}\\begin{bmatrix}p_{13}\\\\ 1\\\\ p_{33}\\end{bmatrix} \\) とする。<br><br>
+        
+                    \\(k_1=\\)<input type="text" class="input-mini" id="q_ex3_k1">, \\(p_{11}=\\)<input type="text" class="input-mini" id="q_ex3_p11">, \\(p_{21}=\\)<input type="text" class="input-mini" id="q_ex3_p21"><br>
+                    \\(k_2=\\)<input type="text" class="input-mini" id="q_ex3_k2">, \\(p_{22}=\\)<input type="text" class="input-mini" id="q_ex3_p22">, \\(p_{32}=\\)<input type="text" class="input-mini" id="q_ex3_p32"><br>
+                    \\(k_3=\\)<input type="text" class="input-mini" id="q_ex3_k3">, \\(p_{13}=\\)<input type="text" class="input-mini" id="q_ex3_p13">, \\(p_{33}=\\)<input type="text" class="input-mini" id="q_ex3_p33">`,
+                correct: {
+                    q_ex3_lam1: "1", q_ex3_lam2: "3", q_ex3_lam3: "4",
+                    q_ex3_k1: "2", q_ex3_p11: "-1", q_ex3_p21: "0",
+                    q_ex3_k2: "2", q_ex3_p22: "0", q_ex3_p32: "1",
+                    q_ex3_k3: "1", q_ex3_p13: "0", q_ex3_p33: "0"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    実対称行列 \\( A=\\begin{bmatrix}2&1&0\\\\ 1&2&0\\\\ 0&0&4\\end{bmatrix} \\) の固有値を \\(\\lambda_1 \\le \\lambda_2 \\le \\lambda_3\\) とする。<br>
+                    \\(\\lambda_1 = \\) <input type="text" class="input-small" id="q_ex4_lam1">, 
+                    \\(\\lambda_2 = \\) <input type="text" class="input-small" id="q_ex4_lam2">, 
+                    \\(\\lambda_3 = \\) <input type="text" class="input-small" id="q_ex4_lam3"> <br><br>
+        
+                    直交行列 \\(P=[p_1 p_2 p_3]\\) によって対角化するとき、各固有ベクトルを<br>
+                    \\( p_{1}=\\frac{1}{\\sqrt{k_{1}}}\\begin{bmatrix}1\\\\ p_{21}\\\\ p_{31}\\end{bmatrix}, p_{2}=\\frac{1}{\\sqrt{k_{2}}}\\begin{bmatrix}1\\\\ p_{22}\\\\ p_{32}\\end{bmatrix}, p_{3}=\\frac{1}{\\sqrt{k_{3}}}\\begin{bmatrix}p_{13}\\\\ p_{23}\\\\ 1\\end{bmatrix} \\) とする。<br><br>
+        
+                    \\(k_1=\\)<input type="text" class="input-mini" id="q_ex4_k1">, \\(p_{21}=\\)<input type="text" class="input-mini" id="q_ex4_p21">, \\(p_{31}=\\)<input type="text" class="input-mini" id="q_ex4_p31"><br>
+                    \\(k_2=\\)<input type="text" class="input-mini" id="q_ex4_k2">, \\(p_{22}=\\)<input type="text" class="input-mini" id="q_ex4_p22">, \\(p_{32}=\\)<input type="text" class="input-mini" id="q_ex4_p32"><br>
+                    \\(k_3=\\)<input type="text" class="input-mini" id="q_ex4_k3">, \\(p_{13}=\\)<input type="text" class="input-mini" id="q_ex4_p13">, \\(p_{23}=\\)<input type="text" class="input-mini" id="q_ex4_p23">`,
+                correct: {
+                    q_ex4_lam1: "1", q_ex4_lam2: "3", q_ex4_lam3: "4",
+                    q_ex4_k1: "2", q_ex4_p21: "-1", q_ex4_p31: "0",
+                    q_ex4_k2: "2", q_ex4_p22: "1", q_ex4_p32: "0",
+                    q_ex4_k3: "1", q_ex4_p13: "0", q_ex4_p23: "0"
+                },
+                gradingType: "text_match"
+            }
+        ],
+
+        // --- 問8: 2次形式 ---
+        q8: [
+            {
+                html: `
+                    2次形式 \\( q(x_{1},x_{2},x_{3})=-x_{1}^{2}+6x_{1}x_{3}-x_{2}^{2}+8x_{2}x_{3}-x_{3}^{2} \\) の係数行列のうち、対称行列であるものを \\(A=[a_{ij}]\\) とすると、<br>
+                    \\(A = \\)
+                    <table class="matrix-table">
+                        <tr>
+                            <td><input type="text" class="input-small" id="q8_0_0"></td>
+                            <td><input type="text" class="input-small" id="q8_0_1"></td>
+                            <td><input type="text" class="input-small" id="q8_0_2"></td>
+                        </tr>
+                        <tr>
+                            <td><input type="text" class="input-small" id="q8_1_0"></td>
+                            <td><input type="text" class="input-small" id="q8_1_1"></td>
+                            <td><input type="text" class="input-small" id="q8_1_2"></td>
+                        </tr>
+                        <tr>
+                            <td><input type="text" class="input-small" id="q8_2_0"></td>
+                            <td><input type="text" class="input-small" id="q8_2_1"></td>
+                            <td><input type="text" class="input-small" id="q8_2_2"></td>
+                        </tr>
+                    </table>
+                    <br>
+                    である。また、\\(q\\) の符号数を \\((r, s)\\) とすると、<br>
+                    \\(r = \\) <input type="text" class="input-small" id="q8_r">, 
+                    \\(s = \\) <input type="text" class="input-small" id="q8_s">
+                    である。`,
+                correct: {
+                    q8_0_0: "-1", q8_0_1: "0", q8_0_2: "3",
+                    q8_1_0: "0", q8_1_1: "-1", q8_1_2: "4",
+                    q8_2_0: "3", q8_2_1: "4", q8_2_2: "-1",
+                    q8_r: "1", q8_s: "2"
+                },
+                gradingType: "text_match"
+            },
+            {
+                html: `
+                    2次形式 \\( q(x_{1},x_{2},x_{3})=2x_{1}^{2}-2x_{1}x_{2}+2x_{2}^{2}-2x_{2}x_{3}+2x_{3}^{2} \\) の係数行列のうち、対称行列であるものを \\(A=[a_{ij}]\\) とすると、<br>
+                    \\(A = \\)
+                    <table class="matrix-table">
+                    <tr>
+                    <td><input type="text" class="input-small" id="q_ex1_0_0"></td>
+                    <td><input type="text" class="input-small" id="q_ex1_0_1"></td>
+                    <td><input type="text" class="input-small" id="q_ex1_0_2"></td>
+                    </tr>
+                    <tr>
+                    <td><input type="text" class="input-small" id="q_ex1_1_0"></td>
+                    <td><input type="text" class="input-small" id="q_ex1_1_1"></td>
+                    <td><input type="text" class="input-small" id="q_ex1_1_2"></td>
+                    </tr>
+                    <tr>
+                    <td><input type="text" class="input-small" id="q_ex1_2_0"></td>
+                    <td><input type="text" class="input-small" id="q_ex1_2_1"></td>
+                    <td><input type="text" class="input-small" id="q_ex1_2_2"></td>
+                    </tr>
+                    </table>
+                    <br>
+                    である。また、\\(q\\) の符号数を \\((r, s)\\) とすると、<br>
+                    \\(r = \\) <input type="text" class="input-small" id="q_ex1_r">, 
+                    \\(s = \\) <input type="text" class="input-small" id="q_ex1_s">
+                    である。`,
+                correct: {
+                 q_ex1_0_0: "2", q_ex1_0_1: "-1", q_ex1_0_2: "0",
+                 q_ex1_1_0: "-1", q_ex1_1_1: "2", q_ex1_1_2: "-1",
+                 q_ex1_2_0: "0", q_ex1_2_1: "-1", q_ex1_2_2: "2",
+                 q_ex1_r: "3", q_ex1_s: "0"
+                }, 
+                gradingType: "text_match"
+            },
+            {
+    html: `
+        2次形式 \\( q(x_{1},x_{2},x_{3})=4x_{1}x_{2}+x_{3}^{2} \\) の係数行列のうち、対称行列であるものを \\(A=[a_{ij}]\\) とすると、<br>
+        \\(A = \\)
+        <table class="matrix-table">
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex2_0_0"></td>
+                <td><input type="text" class="input-small" id="q_ex2_0_1"></td>
+                <td><input type="text" class="input-small" id="q_ex2_0_2"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex2_1_0"></td>
+                <td><input type="text" class="input-small" id="q_ex2_1_1"></td>
+                <td><input type="text" class="input-small" id="q_ex2_1_2"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex2_2_0"></td>
+                <td><input type="text" class="input-small" id="q_ex2_2_1"></td>
+                <td><input type="text" class="input-small" id="q_ex2_2_2"></td>
+            </tr>
+        </table>
+        <br>
+        である。また、\\(q\\) の符号数を \\((r, s)\\) とすると、<br>
+        \\(r = \\) <input type="text" class="input-small" id="q_ex2_r">, 
+        \\(s = \\) <input type="text" class="input-small" id="q_ex2_s">
+        である。`,
+    correct: {
+        q_ex2_0_0: "0", q_ex2_0_1: "2", q_ex2_0_2: "0",
+        q_ex2_1_0: "2", q_ex2_1_1: "0", q_ex2_1_2: "0",
+        q_ex2_2_0: "0", q_ex2_2_1: "0", q_ex2_2_2: "1",
+        q_ex2_r: "2", q_ex2_s: "1"
+    },
+    gradingType: "text_match"
+},
+{
+    html: `
+        2次形式 \\( q(x_{1},x_{2},x_{3})=x_{1}^{2}-2x_{2}^{2}+2x_{2}x_{3}-2x_{3}^{2} \\) の係数行列のうち、対称行列であるものを \\(A=[a_{ij}]\\) とすると、<br>
+        \\(A = \\)
+        <table class="matrix-table">
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex3_0_0"></td>
+                <td><input type="text" class="input-small" id="q_ex3_0_1"></td>
+                <td><input type="text" class="input-small" id="q_ex3_0_2"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex3_1_0"></td>
+                <td><input type="text" class="input-small" id="q_ex3_1_1"></td>
+                <td><input type="text" class="input-small" id="q_ex3_1_2"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex3_2_0"></td>
+                <td><input type="text" class="input-small" id="q_ex3_2_1"></td>
+                <td><input type="text" class="input-small" id="q_ex3_2_2"></td>
+            </tr>
+        </table>
+        <br>
+        である。また、\\(q\\) の符号数を \\((r, s)\\) とすると、<br>
+        \\(r = \\) <input type="text" class="input-small" id="q_ex3_r">, 
+        \\(s = \\) <input type="text" class="input-small" id="q_ex3_s">
+        である。`,
+    correct: {
+        q_ex3_0_0: "1", q_ex3_0_1: "0", q_ex3_0_2: "0",
+        q_ex3_1_0: "0", q_ex3_1_1: "-2", q_ex3_1_2: "1",
+        q_ex3_2_0: "0", q_ex3_2_1: "1", q_ex3_2_2: "-2",
+        q_ex3_r: "1", q_ex3_s: "2"
+    },
+    gradingType: "text_match"
+},
+{
+    html: `
+        2次形式 \\( q(x_{1},x_{2},x_{3})=-3x_{1}^{2}+2x_{1}x_{2}-3x_{2}^{2}-2x_{3}^{2} \\) の係数行列のうち、対称行列であるものを \\(A=[a_{ij}]\\) とすると、<br>
+        \\(A = \\)
+        <table class="matrix-table">
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex4_0_0"></td>
+                <td><input type="text" class="input-small" id="q_ex4_0_1"></td>
+                <td><input type="text" class="input-small" id="q_ex4_0_2"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex4_1_0"></td>
+                <td><input type="text" class="input-small" id="q_ex4_1_1"></td>
+                <td><input type="text" class="input-small" id="q_ex4_1_2"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="input-small" id="q_ex4_2_0"></td>
+                <td><input type="text" class="input-small" id="q_ex4_2_1"></td>
+                <td><input type="text" class="input-small" id="q_ex4_2_2"></td>
+            </tr>
+        </table>
+        <br>
+        である。また、\\(q\\) の符号数を \\((r, s)\\) とすると、<br>
+        \\(r = \\) <input type="text" class="input-small" id="q_ex4_r">, 
+        \\(s = \\) <input type="text" class="input-small" id="q_ex4_s">
+        である。`,
+    correct: {
+        q_ex4_0_0: "-3", q_ex4_0_1: "1", q_ex4_0_2: "0",
+        q_ex4_1_0: "1", q_ex4_1_1: "-3", q_ex4_1_2: "0",
+        q_ex4_2_0: "0", q_ex4_2_1: "0", q_ex4_2_2: "-2",
+        q_ex4_r: "0", q_ex4_s: "3"
+    },
+    gradingType: "text_match"
+}
+        ]
+    };
+
+    // グローバル変数
+    let currentExamData = []; 
+    let currentSlideIndex = 0;
+    let timerInterval = null;
+    let totalSeconds = 75 * 60; 
+    let isExamFinished = false;
+
+    // =======================================================
+    // システムロジック
+    // =======================================================
+
+    function startExam() {
+        document.getElementById('start-screen').classList.remove('active-screen');
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('exam-screen').classList.add('active-screen');
+
+        generateExamQuestions();
+        generateNavButtons();
+        updateSlideVisibility();
+        
+        MathJax.typesetPromise();
+        startTimer();
+    }
+
+    // デバッグモード：全ストック表示機能
+    function startDebugMode() {
+        // UI切り替え
+        document.getElementById('start-screen').classList.remove('active-screen');
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('exam-screen').classList.add('active-screen');
+
+        // フッター（ナビゲーション）とタイマーを非表示
+        document.getElementById('exam-footer').style.display = 'none';
+        document.getElementById('timer-label').style.display = 'none';
+        document.getElementById('question-nav-bar').innerHTML = "<b>デバッグモード: 全ストック表示</b>";
+
+        const examBody = document.getElementById('exam-body');
+        examBody.innerHTML = "";
+        examBody.classList.add('debug-list-view'); 
+
+        // デバッグ用にcurrentExamDataをリセット
+        currentExamData = [];
+
+        let displayCount = 0;
+        
+        // 全問ループ
+        Object.keys(questionStock).forEach((key) => {
+            const variations = questionStock[key];
+            variations.forEach((qData, vIndex) => {
+                displayCount++;
+                const slideDiv = document.createElement('div');
+                slideDiv.className = 'question-slide'; 
+                
+                // --- ID/Nameのユニーク化 ---
+                const suffix = `_d_${key}_${vIndex}`;
+                // HTML文字列内のIDを置換
+                let modifiedHtml = qData.html.replace(/id="([^"]+)"/g, 'id="$1' + suffix + '"');
+                // name属性も置換（ラジオボタンやチェックボックスのグループ化のため重要）
+                modifiedHtml = modifiedHtml.replace(/name="([^"]+)"/g, 'name="$1' + suffix + '"');
+
+                // 正解データもID置換に合わせて修正
+                let modifiedCorrect = JSON.parse(JSON.stringify(qData.correct)); // 深いコピー
+
+                if (qData.gradingType === "text_match") {
+                    const newCorrect = {};
+                    Object.keys(modifiedCorrect).forEach(k => {
+                        newCorrect[k + suffix] = modifiedCorrect[k];
+                    });
+                    modifiedCorrect = newCorrect;
+                } else if (qData.gradingType === "hybrid") {
+                    if (modifiedCorrect.text && modifiedCorrect.text.id) {
+                        modifiedCorrect.text.id += suffix;
+                    }
+                    if (modifiedCorrect.checkbox && modifiedCorrect.checkbox.name) {
+                        modifiedCorrect.checkbox.name += suffix;
+                    }
+                }
+
+                // デバッグ用データとして登録
+                currentExamData.push({
+                    index: displayCount - 1, // ダミーインデックス
+                    id: key + suffix,
+                    maxPoints: 10, // デバッグ用一律配点
+                    html: modifiedHtml,
+                    correct: modifiedCorrect,
+                    gradingType: qData.gradingType
+                });
+
+                slideDiv.innerHTML = `
+                    <div class="debug-label">${key} - パターン${vIndex + 1}</div>
+                    <div class="question-block">
+                        <div class="info-panel">
+                            <span class="q-number">No. ${displayCount}</span>
+                            <span class="status">確認用</span>
+                            <span class="grade-result" id="${key + suffix}-grade"></span>
+                        </div>
+                        <div class="content-panel">
+                            <div class="question-text">
+                                ${modifiedHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                examBody.appendChild(slideDiv);
+            });
+        });
+
+        // デバッグ用採点ボタンを追加
+        const debugFooter = document.createElement('div');
+        debugFooter.className = 'debug-footer';
+        debugFooter.innerHTML = `<button class="big-btn" onclick="finishExam()">デバッグ採点実行</button>`;
+        examBody.appendChild(debugFooter);
+
+        MathJax.typesetPromise();
+    }
+
+    function generateExamQuestions() {
+        const examBody = document.getElementById('exam-body');
+        examBody.innerHTML = ""; 
+        currentExamData = [];
+
+        // q1～q8までループしてランダム抽出
+        for (let i = 1; i <= 8; i++) {
+            const qKey = `q${i}`;
+            const variations = questionStock[qKey];
+            if (!variations) continue; // データがない場合はスキップ
+
+            const randomIndex = Math.floor(Math.random() * variations.length);
+            const selectedQuestion = variations[randomIndex];
+
+            currentExamData.push({
+                index: i - 1,
+                id: qKey,
+                maxPoints: (i === 5) ? 6.0 : (i >= 6 ? 8.0 : 5.0), 
+                ...selectedQuestion
+            });
+
+            const slideDiv = document.createElement('div');
+            slideDiv.className = 'question-slide';
+            slideDiv.id = `${qKey}-slide`;
+
+            slideDiv.innerHTML = `
+                <div class="question-block">
+                    <div class="info-panel">
+                        <span class="q-number">問題 ${i}</span>
+                        <span class="status">未回答</span>
+                        <span class="points">配点 ${currentExamData[i-1].maxPoints.toFixed(2)}</span>
+                        <span class="grade-result" id="${qKey}-grade"></span>
+                    </div>
+                    <div class="content-panel">
+                        <div class="question-text">
+                            ${selectedQuestion.html}
+                        </div>
+                    </div>
+                </div>
+            `;
+            examBody.appendChild(slideDiv);
+        }
+    }
+
+    function generateNavButtons() {
+        const navContainer = document.getElementById('question-nav-bar');
+        navContainer.innerHTML = ''; 
+        currentExamData.forEach((q, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'q-nav-btn';
+            btn.innerText = index + 1;
+            btn.onclick = () => jumpToSlide(index);
+            btn.id = `nav-btn-${index}`;
+            navContainer.appendChild(btn);
+        });
+    }
+
+    function startTimer() {
+        updateTimerDisplay(totalSeconds);
+        timerInterval = setInterval(() => {
+            totalSeconds--;
+            updateTimerDisplay(totalSeconds);
+            if (totalSeconds <= 0) {
+                clearInterval(timerInterval);
+                alert("試験時間が終了しました。自動的に採点します。");
+                finishExam();
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        document.getElementById('timer-display').textContent = 
+            `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        if (sec < 300) document.getElementById('timer-display').classList.add('timer-warning');
+    }
+
+    // --- ナビゲーション ---
+    function jumpToSlide(index) {
+        if (index >= 0 && index < currentExamData.length) {
+            currentSlideIndex = index;
+            updateSlideVisibility();
+        }
+    }
+    function moveSlide(dir) { jumpToSlide(currentSlideIndex + dir); }
+
+    function updateSlideVisibility() {
+        document.querySelectorAll('.question-slide').forEach(el => el.classList.remove('active-slide'));
+        const currentId = `${currentExamData[currentSlideIndex].id}-slide`;
+        document.getElementById(currentId).classList.add('active-slide');
+        
+        for (let i = 0; i < currentExamData.length; i++) {
+            const btn = document.getElementById(`nav-btn-${i}`);
+            if (i === currentSlideIndex) {
+                btn.classList.add('active');
+                btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+
+        prevBtn.disabled = (currentSlideIndex === 0);
+        if (currentSlideIndex === currentExamData.length - 1) {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'block';
+        } else {
+            nextBtn.style.display = 'block';
+            submitBtn.style.display = 'none';
+        }
+        document.getElementById('exam-body').scrollTop = 0;
+    }
+
+    // --- 汎用採点関数 ---
+    function checkTextMatch(id, correctVal) {
+        const el = document.getElementById(id);
+        if(!el) return 0; 
+        const val = el.value.replace(/\s+/g, ''); 
+        if (val === String(correctVal)) {
+            el.classList.add("correct-bg");
+            el.classList.remove("incorrect-bg");
+            return 1;
+        } else {
+            el.classList.add("incorrect-bg");
+            el.classList.remove("correct-bg");
+            return 0;
+        }
+    }
+
+    function finishExam() {
+        if (timerInterval) clearInterval(timerInterval);
+        isExamFinished = true;
+        
+        let grandTotal = 0; 
+        let maxTotal = 0;
+        const isDebug = document.getElementById('exam-body').classList.contains('debug-list-view');
+
+        currentExamData.forEach(question => {
+            const max = question.maxPoints;
+            let score = 0;
+            const correctData = question.correct;
+
+            if (question.gradingType === "checkbox") {
+                const inputs = document.querySelectorAll(`input[name="${question.id}"]:checked`);
+                const selected = Array.from(inputs).map(cb => cb.value);
+                let hasWrong = selected.some(v => !correctData.includes(v));
+                if (!hasWrong && selected.length > 0) {
+                    score = max * (selected.length / correctData.length);
+                }
+                
+            } else if (question.gradingType === "text_match") {
+                const keys = Object.keys(correctData);
+                let pts = 0;
+                keys.forEach(key => {
+                    pts += checkTextMatch(key, correctData[key]);
+                });
+                score = max * (pts / keys.length);
+
+            } else if (question.gradingType === "hybrid") {
+                // ハイブリッド採点ロジック (問1用)
+                
+                // 1. テキスト部分 (ランク) - 配点の50%
+                const textScorePart = checkTextMatch(correctData.text.id, correctData.text.val);
+                const textPoints = (max * 0.5) * textScorePart;
+
+                // 2. チェックボックス部分 (基底) - 配点の50%
+                const cbName = correctData.checkbox.name;
+                const correctVals = correctData.checkbox.vals;
+                const inputs = document.querySelectorAll(`input[name="${cbName}"]:checked`);
+                const selected = Array.from(inputs).map(cb => cb.value);
+
+                // 簡易判定：正解セットと完全一致で満点
+                const sortedSelected = selected.sort().toString();
+                const sortedCorrect = correctVals.sort().toString();
+                
+                let cbPoints = 0;
+                if (sortedSelected === sortedCorrect) {
+                    cbPoints = (max * 0.5); 
+                }
+                
+                score = textPoints + cbPoints;
+            }
+
+            updateStatus(question.id, score, max);
+            grandTotal += score;
+            maxTotal += max;
+        });
+
+        if (isDebug) {
+            alert(`デバッグ採点完了: ${grandTotal.toFixed(2)} / ${maxTotal.toFixed(2)} 点`);
+            return; // デバッグ時は画面遷移しない
+        }
+
+        document.getElementById('exam-screen').classList.remove('active-screen');
+        document.getElementById('exam-screen').style.display = 'none';
+        document.getElementById('result-screen').classList.add('active-screen');
+        document.getElementById('result-screen').style.display = 'flex';
+        
+        const display = document.getElementById("total-score-display");
+        display.innerHTML = `${grandTotal.toFixed(2)} / ${maxTotal.toFixed(2)} 点`;
+        display.style.color = (Math.abs(grandTotal - maxTotal) < 0.1) ? "#28a745" : "#d9534f";
+    }
+
+    function updateStatus(qId, score, max) {
+        const gradeSpan = document.getElementById(`${qId}-grade`);
+        if(gradeSpan) {
+            gradeSpan.innerText = `得点: ${score.toFixed(2)} / ${max.toFixed(2)}`;
+            gradeSpan.style.display = 'inline';
+        }
+        // デバッグモード時はSlide IDの構造が違うため調整が必要だが、
+        // 上記のgradeSpanはID直接指定なので動作する。
+        // slideステータスの更新は本番モード用
+        const statusSpan = document.querySelector(`#${qId}-slide .status`);
+        if(statusSpan) statusSpan.innerText = "採点済";
+    }
+
+    function reviewAnswers() {
+        document.getElementById('result-screen').classList.remove('active-screen');
+        document.getElementById('result-screen').style.display = 'none';
+        const examScreen = document.getElementById('exam-screen');
+        examScreen.style.display = 'flex';
+        examScreen.classList.add('active-screen');
+        
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => input.disabled = true);
+        
+        document.getElementById('timer-label').innerHTML = "<span style='color:#ffc107'>採点結果確認モード</span>";
+        document.getElementById('submit-btn').style.display = 'none';
+        
+        // デバッグモードではない場合、先頭へ
+        if (!document.getElementById('exam-body').classList.contains('debug-list-view')) {
+             jumpToSlide(0);
+        }
+    }
+</script>
+
+</body>
+</html>
