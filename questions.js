@@ -24,9 +24,50 @@
                 `,
                 // ハイブリッド用の正解データ定義
                 explanation: `
-                <iframe src="02_thermodynamics3.pdf" width="100%" height="600px" style="border:none;">
-                    <p>ブラウザがPDFに対応していません。<a href="02_thermodynamics3.pdf" target="_blank">ここからダウンロード</a>してください。</p>
-                </iframe>
+                <h3>【解説】</h3>
+                <p>行列 \\( A = (\\boldsymbol{a}_1, \\boldsymbol{a}_2, \\boldsymbol{a}_3, \\boldsymbol{a}_4) \\) を行基本変形してランクを求める.</p>
+                $$
+                A = 
+                \\begin{pmatrix}
+                1 & 2 & 1 & 3 \\\\
+                2 & 4 & 2 & 6 \\\\
+                1 & 3 & 2 & 4 \\\\
+                3 & 1 & -2 & 4
+                \\end{pmatrix}
+                $$
+                <p>（第2行-2×第1行、第3行-第1行、第4行-3×第1行）</p>
+                $$
+                \\longrightarrow
+                \\begin{pmatrix}
+                1 & 2 & 1 & 3 \\\\
+                0 & 0 & 0 & 0 \\\\
+                0 & 1 & 1 & 1 \\\\
+                0 & -5 & -5 & -5
+                \\end{pmatrix}
+                $$
+                $$
+                \\longrightarrow
+                \\begin{pmatrix}
+                1 & 2 & 1 & 3 \\\\
+                0 & 1 & 1 & 1 \\\\
+                0 & 0 & 0 & 0 \\\\
+                0 & 0 & 0 & 0
+                \\end{pmatrix}
+                $$
+                $$
+                \\longrightarrow
+                \\begin{pmatrix}
+                1 & 0 & -1 & 1 \\\\
+                0 & 1 & 1 & 1 \\\\
+                0 & 0 & 0 & 0 \\\\
+                0 & 0 & 0 & 0
+                \\end{pmatrix}
+                $$
+                <p>
+                よって<strong>ランクは \\( r=2 \\) </strong>である.<br>
+                次に一次独立なベクトルの組は主成分に注目して\\(\\boldsymbol{a}_1, \\boldsymbol{a}_2\\)だとわかる.
+                </p>
+                <p><strong>答え：</strong> \\(r=2\\), 一次独立なベクトルの組：\\(\\boldsymbol{a}_1, \\boldsymbol{a}_2\\)</p>
                  `,
                 correct: {
                     type: "hybrid",
@@ -150,6 +191,7 @@
                     </div>
                     となる。
                 `,
+                explanation:``,
                 correct: {
                     type: "hybrid",
                     text: { id: "q1_rank", val: "3" }, 
